@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -76,7 +75,7 @@ public class ReportController {
     @GetMapping("/download/{fileId}")
     public ResponseEntity<Resource> downloadReport(
             @PathVariable("fileId") String fileId,
-            HttpSession session) throws IOException {
+            HttpSession session) {
 
         String sessionId = session.getId();
         String fileName = "report_" + fileId + ".pdf"; // 파일 이름 형식: report_{UUID}.pdf
