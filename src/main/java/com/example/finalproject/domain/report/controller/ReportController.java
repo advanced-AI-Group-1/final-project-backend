@@ -1,11 +1,11 @@
 package com.example.finalproject.domain.report.controller;
 
+import com.example.finalproject.exception.error.PdfGenerationException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -49,7 +49,7 @@ public class ReportController {
     @PostMapping(value = "/upload", consumes = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<String> receiveGeneratedReport(
             HttpServletRequest request,
-            HttpSession session) throws IOException {
+            HttpSession session) {
 
         // session에서 사용자 정보 가져오기
         String sessionId = session.getId();
@@ -58,17 +58,22 @@ public class ReportController {
         String fileName = "report_" + fileId + ".pdf"; // 파일 이름 형식: report_{UUID}.pdf
         // temp 경로 생성
         Path sessionDir = Paths.get(TEMP_DIR, sessionId);
-        Files.createDirectories(sessionDir);
 
-        // 파일을 세션 디렉토리에 저장 + OS에 따라 경로 구분자 처리
-        File targetFile = new File(sessionDir.toFile(), fileName);
 
-        try (InputStream inputStream = request.getInputStream();
-        OutputStream outputStream = Files.newOutputStream(targetFile.toPath())) {
-            inputStream.transferTo(outputStream);
+        try {
+            // 파일을 세션 디렉토리에 저장 + OS에 따라 경로 구분자 처리
+            Files.createDirectories(sessionDir);
+            File targetFile = new File(sessionDir.toFile(), fileName);
+
+            try (InputStream inputStream = request.getInputStream();
+            OutputStream outputStream = Files.newOutputStream(targetFile.toPath())) {
+                inputStream.transferTo(outputStream);
+            }
+
+            return ResponseEntity.ok(fileId);
+        } catch (IOException e) {
+            throw new PdfGenerationException(PdfGenerationException.ErrorType.PDF_GENERATION_FAILED);
         }
-
-        return ResponseEntity.ok(fileId);
     }
 
     //2. downloadReport : PDF 파일 다운로드를 위한 엔드포인트 (세션 + UUID 기반)
@@ -82,7 +87,7 @@ public class ReportController {
         File file = Paths.get(TEMP_DIR, sessionId, fileName).toFile();
 
         if (!file.exists()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            throw new PdfGenerationException(PdfGenerationException.ErrorType.PDF_FILE_NOT_FOUND);
         }
 
         Resource resource = new FileSystemResource(file);
