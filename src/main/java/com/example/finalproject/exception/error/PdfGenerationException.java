@@ -1,9 +1,8 @@
 package com.example.finalproject.exception.error;
 
-import lombok.Getter;
 
 public class PdfGenerationException extends RuntimeException {
-    private ErrorType errorType;
+    private final ErrorType errorType;
 
     public enum ErrorType {
         PDF_GENERATION_FAILED,
