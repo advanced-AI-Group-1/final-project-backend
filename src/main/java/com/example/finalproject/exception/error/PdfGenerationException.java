@@ -15,7 +15,7 @@ public class PdfGenerationException extends RuntimeException {
     }
 
     public PdfGenerationException(ErrorType errorType) {
-        super(errorType);
+        super();
         this.errorType = errorType;
     }
 }
