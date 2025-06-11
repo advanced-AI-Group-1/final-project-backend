@@ -20,6 +20,7 @@ logging:
 #    org.hibernate.type.descriptor.sql: trace  # ?? ? SQL ?????? ?? ??
 
 server:
+  port: 8080
   servlet:
     session:
       timeout: 180m
