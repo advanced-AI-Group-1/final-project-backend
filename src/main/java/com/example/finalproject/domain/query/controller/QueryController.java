@@ -4,10 +4,7 @@ import com.example.finalproject.exception.error.AIServerUnavailableException;
 import com.example.finalproject.exception.error.FinancialDataParseException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -74,16 +71,14 @@ public class QueryController {
     /**
      * 1. 일반 텍스트 쿼리 처리 (예: "삼성전자 등급 알려줘")
      */
-    @PostMapping("/ask")
-    public ResponseEntity<?> forwardQuery(@RequestBody Map<String, String> payload) {
-        String query = payload.get("query");
-
+    @GetMapping("/ask")
+    public ResponseEntity<?> forwardQuery(@RequestParam String query){
         if (query == null || query.trim().isEmpty()) {
             throw new IllegalArgumentException("쿼리를 입력해야 합니다.");
         }
 
         // 실제 AI 호출 (현재 주석 처리)
-        // ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/answer");
+        // ResponseEntity<String> response = sendToAiServer(Map.of("query", query), "api/ai/answer");
         // return ResponseEntity.ok(response.getBody());
 
         // ✅ Mock 응답
