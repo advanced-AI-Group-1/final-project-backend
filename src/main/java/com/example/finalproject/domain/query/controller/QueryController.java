@@ -4,10 +4,7 @@ import com.example.finalproject.exception.error.AIServerUnavailableException;
 import com.example.finalproject.exception.error.FinancialDataParseException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -45,15 +42,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/query")
 public class QueryController {
+
 //    @Value("${ai.server.url}")
 //    private String aiServerUrl; // application.yml이나 properties에 등록 필요
 
-    //  application 실행을 위한 임시 주소 설정
-    @Value("${ai.server.url:http://localhost:8000}")
-    private String aiServerUrl;
+//    @Value("${ai.server.url:http://localhost:8000}")
+//    private String aiServerUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
-
 
     /**
      * 공통적으로 AI 서버에 요청을 보내는 메서드
@@ -64,11 +60,9 @@ public class QueryController {
         HttpEntity<Map<String, ?>> requestEntity = new HttpEntity<>(payload, headers);
 
         try {
-            return restTemplate.postForEntity(
-                    aiServerUrl + endpoint,
-                    requestEntity,
-                    String.class
-            );
+            // 실제 요청 (현재는 사용하지 않음)
+            // return restTemplate.postForEntity(aiServerUrl + endpoint, requestEntity, String.class);
+            throw new UnsupportedOperationException("🧪 Mock 테스트 중 - 실제 AI 서버 호출 비활성화됨");
         } catch (Exception e) {
             throw new AIServerUnavailableException("AI 서버와 통신 중 오류 발생: " + e.getMessage());
         }
@@ -77,16 +71,19 @@ public class QueryController {
     /**
      * 1. 일반 텍스트 쿼리 처리 (예: "삼성전자 등급 알려줘")
      */
-    @PostMapping("/ask")
-    public ResponseEntity<?> forwardQuery(@RequestBody Map<String, String> payload) {
-        String query = payload.get("query");
-
+    @GetMapping("/ask")
+    public ResponseEntity<?> forwardQuery(@RequestParam String query){
         if (query == null || query.trim().isEmpty()) {
             throw new IllegalArgumentException("쿼리를 입력해야 합니다.");
         }
 
-        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/answer");
-        return ResponseEntity.ok(response.getBody());
+        // 실제 AI 호출 (현재 주석 처리)
+        // ResponseEntity<String> response = sendToAiServer(Map.of("query", query), "api/ai/answer");
+        // return ResponseEntity.ok(response.getBody());
+
+        // ✅ Mock 응답
+        String mockResponse = "🧪 [Mock] 백엔드 응답 성공 - 쿼리: " + query;
+        return ResponseEntity.ok(mockResponse);
     }
 
     /**
@@ -98,7 +95,15 @@ public class QueryController {
             throw new FinancialDataParseException("재무데이터가 누락되었거나 형식이 올바르지 않습니다.");
         }
 
-        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/financial-analysis");
-        return ResponseEntity.ok(response.getBody());
+        // 실제 AI 호출 (현재 주석 처리)
+        // ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/financial-analysis");
+        // return ResponseEntity.ok(response.getBody());
+
+        // ✅ Mock 응답
+        Object financialData = payload.get("financialData");
+        String mockResponse = "📊 [Mock] 백엔드 응답 성공 - 재무데이터 항목 수: "
+                + ((Map<?, ?>) financialData).size();
+        return ResponseEntity.ok(mockResponse);
     }
 }
+
