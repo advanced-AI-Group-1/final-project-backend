@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: db-url
+    username: 
+    password: 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create   # ??? create, ??? update? validate?
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+  servlet:
+    multipart:
+      resolve-lazily: true
+      enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+#    org.hibernate.type.descriptor.sql: trace  # ?? ? SQL ?????? ?? ??
+
+server:
+  port: 8080
+  servlet:
+    session:
+      timeout: 180m
+
+ai:
+  server:
+    url: http://localhost:8000 # ai server url
+
+front:
+  server:
+    url: http://localhost:3000 # front url
