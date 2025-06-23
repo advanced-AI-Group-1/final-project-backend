@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create   # ??? create, ??? update? validate?
+      ddl-auto: update   # ??? create, ??? update? validate?
     properties:
       hibernate:
         show_sql: true
@@ -33,11 +33,3 @@ server:
   servlet:
     session:
       timeout: 180m
-
-ai:
-  server:
-    url: http://localhost:8000 # ai server url
-
-front:
-  server:
-    url: http://localhost:3000 # front url
