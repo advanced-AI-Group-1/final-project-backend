@@ -45,3 +45,4 @@ application-secret.yml
 # 로그 파일 무시
 *.log
 application.yml
+src/main/resources/application.yml
