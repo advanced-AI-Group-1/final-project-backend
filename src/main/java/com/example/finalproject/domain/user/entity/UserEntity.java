@@ -1,11 +1,13 @@
 package com.example.finalproject.domain.user.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "USERS")
+@Getter
 public class UserEntity {
 
     @Id
