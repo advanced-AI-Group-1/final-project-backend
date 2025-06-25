@@ -1,13 +1,20 @@
-spring:
-  datasource:
-    url: db-url
-    username:
+database:
+  mysql:
+    url: jdbc:mysql://mysql.cxcms6k22ed0.ap-northeast-2.rds.amazonaws.com:3306/final_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: admin
+    password: mysql1234
+  h2:
+    url: jdbc:h2:mem:final_db;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_UPPER=TRUE
+    username: admin
     password:
-    driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+
+spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update # update, 처음 시작 시에는 create혹은 create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
