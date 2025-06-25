@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "USER")
+@Table(name = "USERS")
 public class UserEntity {
 
     @Id
@@ -32,5 +32,5 @@ public class UserEntity {
 
     @Column(nullable = false)
     private boolean isDirectSignup;
-    
+
 }
