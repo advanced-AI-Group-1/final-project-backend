@@ -21,21 +21,21 @@ import java.util.UUID;
 
 /**
  * [📄 ReportController 클래스 설명]
- * <p>
+ *
  * 이 컨트롤러는 Agent AI 서버가 생성한 PDF 보고서를 서버 측에서 세션별로 저장하고,
  * 사용자(프론트엔드)가 이후 다운로드할 수 있도록 제공하는 역할을 한다.
- * <p>
+ *
  * 예 : /tmp/reports/{세션ID}/report_{fileId}.pdf
- * <p>
+ *
  * 주요 흐름:
  * - POST /api/report/upload: Agent AI 서버가 생성한 PDF 파일을 HTTP body로 전송
  * - GET /api/report/download/{fileId}: 사용자에게 해당 PDF 파일을 다운로드 제공
- * <p>
+ *
  * 세션 ID 기반으로 임시 저장소 디렉토리를 구분하며, UUID 기반으로 고유 파일명을 생성한다.
  * 세션 종료 시 해당 폴더는 자동 삭제된다 (SessionCleanupListener 참조).
- * <p>
+ *
  * 보안상 세션ID는 사용자에게 노출되지 않으며, 프론트는 UUID만 사용한다.
- * <p>
+ *
  * 확장 기능 :  보고서 목록 조회, 다운로드 유효시간 제한, 파일 자동 만료 기능, 남은 스토리지 용량 체크 로직 (향후 대량 저장 고려 시)
  */
 @RestController
