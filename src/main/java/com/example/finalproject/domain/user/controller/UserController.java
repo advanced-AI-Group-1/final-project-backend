@@ -114,28 +114,53 @@ public class UserController {
         }
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid UserRegisterDTO registerDTO) {
+//    @PostMapping("/signup")
+//    public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid UserRegisterDTO registerDTO) {
+//
+//        log.info(registerDTO.toString());
+//
+//        try {
+//            userService.registerUser(
+//                registerDTO.getUserId(),
+//                registerDTO.getPassword(),
+//                registerDTO.isDirectSignup()
+//            );
+//
+//            return ResponseEntity.status(HttpStatus.CREATED)
+//                .body(ApiResponse.success("User registered successfully"));
+//        } catch (DuplicateUserException e) {
+//            log.warn("회원가입 실패 - 중복 유저: {}", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.CONFLICT)
+//                .body(ApiResponse.error("이미 존재하는 사용자입니다."));
+//        } catch (Exception e) {
+//            log.error("회원가입 중 서버 오류 발생", e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(ApiResponse.error("회원가입 중 오류가 발생했습니다."));
+//        }
+//    }
+@PostMapping("/signup")
+public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid UserRegisterDTO registerDTO) {
+    log.info(registerDTO.toString());
 
-        log.info(registerDTO.toString());
-
-        try {
-            userService.registerUser(
+    try {
+        userService.registerUser(
                 registerDTO.getUserId(),
                 registerDTO.getPassword(),
                 registerDTO.isDirectSignup()
-            );
+        );
 
-            return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User registered successfully"));
-        } catch (DuplicateUserException e) {
-            log.warn("회원가입 실패 - 중복 유저: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT)
+    } catch (DuplicateUserException e) {
+        log.warn("회원가입 실패 - 중복 유저: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("이미 존재하는 사용자입니다."));
-        } catch (Exception e) {
-            log.error("회원가입 중 서버 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    } catch (Exception e) {
+        // ✅ 이 아래 log.error(...) 줄을 추가해 주세요
+        log.error("회원가입 중 서버 오류 발생", e);  // ★ 이 줄 꼭 추가 ★
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("회원가입 중 오류가 발생했습니다."));
-        }
     }
+}
+
 }

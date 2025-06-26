@@ -3,10 +3,11 @@ package com.example.finalproject.domain.user.service;
 import com.example.finalproject.domain.user.entity.UserEntity;
 import com.example.finalproject.domain.user.repository.UserRepository;
 import java.time.LocalDateTime;
-
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.example.finalproject.exception.error.DuplicateUserException;
 
 import java.util.Optional;
 /**
@@ -32,6 +33,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Builder
 public class UserService {
 
     private final UserRepository userRepository;
@@ -41,25 +43,45 @@ public class UserService {
         return userRepository.findByUserId(userId);
     }
 
+//    public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
+//        return userRepository.save(
+//                new UserEntity(
+//                        userId,
+//                        passwordEncoder.encode(rawPassword),
+//                        true,
+//                        LocalDateTime.now(),
+//                        null,
+//                        false,
+//                        isDirectSignup
+//                )
+//        );
+//    }
+
     public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
-        return userRepository.save(     new UserEntity(
+        if (userRepository.findByUserId(userId).isPresent()) {
+            throw new DuplicateUserException("이미 존재하는 사용자입니다: " + userId);
+        }
 
-                userId,
-                passwordEncoder.encode(rawPassword),
-                true,
-                LocalDateTime.now(),
-                null,
-                false,
-                isDirectSignup
-
-                )
+        return userRepository.save(
+                UserEntity.builder()
+                        .userId(userId)
+                        .password(passwordEncoder.encode(rawPassword))
+                        .enabled(true)
+                        .dateCreated(LocalDateTime.now())
+                        .dateWithdraw(null)
+                        .withdraw(false)
+                        .isDirectSignup(isDirectSignup)
+                        .build()
         );
     }
 
-    // 로그인
     public boolean login(String userId, String rawPassword) {
-        String password = passwordEncoder.encode(rawPassword);
-        return userRepository.findByUserIdAndPassword(userId, password).isPresent();
-    }
+        Optional<UserEntity> optionalUser = userRepository.findByUserId(userId);
+        if (optionalUser.isPresent()) {
+            UserEntity user = optionalUser.get();
+            return passwordEncoder.matches(rawPassword, user.getPassword());
+        }
+        return false;
 
+    }
 }
