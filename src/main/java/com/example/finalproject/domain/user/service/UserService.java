@@ -1,15 +1,13 @@
 package com.example.finalproject.domain.user.service;
 
-import com.example.finalproject.domain.user.dto.UserDto;
 import com.example.finalproject.domain.user.entity.UserEntity;
 import com.example.finalproject.domain.user.repository.UserRepository;
 import java.time.LocalDateTime;
-import lombok.Builder;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 /**
  * 사용자 관련 핵심 비즈니스 로직을 처리하는 서비스 클래스입니다.
@@ -34,7 +32,6 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Builder
 public class UserService {
 
     private final UserRepository userRepository;
@@ -42,22 +39,11 @@ public class UserService {
 
     public Optional<UserEntity> findByUserId(String userId) {
         return userRepository.findByUserId(userId);
-    // 회원가입
-    public void signup(UserDto userDto) {
-        UserEntity user = UserEntity.builder()
-                .userId(userDto.getUserId())
-                .password(userDto.getPassword())  // 평문 저장 (현재 요구사항 기준)
-                .enabled(true)
-                .dateCreated(LocalDateTime.now())
-                .withdraw(false)
-                .isDirectSignup(true)
-                .build();
-        userRepository.save(user);
     }
 
     public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
-        return userRepository.save(
-            new UserEntity(
+        return userRepository.save(     new UserEntity(
+
                 userId,
                 passwordEncoder.encode(rawPassword),
                 true,
@@ -65,15 +51,15 @@ public class UserService {
                 null,
                 false,
                 isDirectSignup
-            )
+
+                )
         );
+    }
+
     // 로그인
-    public boolean login(String userId, String password) {
+    public boolean login(String userId, String rawPassword) {
+        String password = passwordEncoder.encode(rawPassword);
         return userRepository.findByUserIdAndPassword(userId, password).isPresent();
     }
 
-    // 유저 조회 (GET 테스트용)
-    public UserEntity findByUserId(String userId) {
-        return userRepository.findByUserId(userId).orElse(null);
-    }
 }
