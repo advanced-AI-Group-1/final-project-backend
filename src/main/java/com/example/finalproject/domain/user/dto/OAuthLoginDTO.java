@@ -1,9 +1,11 @@
 package com.example.finalproject.domain.user.dto;
 
 import lombok.Data;
+import lombok.Getter;
 
 @Data
-public class OAuthDTO {
+@Getter
+public class OAuthLoginDTO {
     private Long id;
     private String userId;
     private String providerId;

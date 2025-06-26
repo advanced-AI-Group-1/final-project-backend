@@ -1,13 +1,16 @@
 package com.example.finalproject.domain.user.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "USERS")
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserEntity {
 
     @Id
@@ -35,4 +38,13 @@ public class UserEntity {
     @Column(nullable = false)
     private boolean isDirectSignup;
 
+    public UserEntity(String userId, String password, boolean enabled, LocalDateTime dateCreated, LocalDateTime dateWithdraw, boolean withdraw, boolean isDirectSignup) {
+        this.userId = userId;
+        this.password = password;
+        this.enabled = enabled;
+        this.dateCreated = dateCreated;
+        this.dateWithdraw = dateWithdraw;
+        this.withdraw = withdraw;
+        this.isDirectSignup = isDirectSignup;
+    }
 }

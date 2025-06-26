@@ -1,8 +1,10 @@
 package com.example.finalproject.exception;
 
 import com.example.finalproject.exception.error.AIServerUnavailableException;
+import com.example.finalproject.exception.error.DuplicateUserException;
 import com.example.finalproject.exception.error.FinancialDataParseException;
 import com.example.finalproject.exception.error.PdfGenerationException;
+import com.example.finalproject.exception.error.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -65,5 +67,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleDefault(Exception e) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("서버 내부 오류: " + e.getMessage());
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<String>> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateUserException.class)
+    public ResponseEntity<ApiResponse<String>> handleDuplicateUser(DuplicateUserException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(ex.getMessage()));
     }
 }
