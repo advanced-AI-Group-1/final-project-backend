@@ -2,13 +2,17 @@ package com.example.finalproject.domain.query.controller;
 
 import com.example.finalproject.exception.error.AIServerUnavailableException;
 import com.example.finalproject.exception.error.FinancialDataParseException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Map;
 
@@ -44,56 +48,62 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/query")
+@Slf4j
 public class QueryController {
 
     @Value("${ai.server.url:http://localhost:8000}")
     private String aiServerUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
-	
-	/**
-	 * 공통적으로 AI 서버에 요청을 보내는 메서드
-	 */
-	private ResponseEntity<String> sendToAiServer(Object payload, String endpoint) {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		HttpEntity<Object> requestEntity = new HttpEntity<>(payload, headers);
-		
-		try {
-			return restTemplate.postForEntity(aiServerUrl + endpoint, requestEntity, String.class);
-		} catch (Exception e) {
-			throw new AIServerUnavailableException("AI 서버와 통신 중 오류 발생: " + e.getMessage());
-		}
-	}
-	
-	/**
-	 * 1. 일반 텍스트 쿼리 처리 (예: "삼성전자 등급 알려줘")
-	 * 실제 AI 서버에 POST 요청을 보냄
-	 */
-	@PostMapping("/ask")
-	public ResponseEntity<?> forwardQuery(@RequestBody Map<String, Object> payload) {
-		// 예시: { "prompt": "매출액이 높고 부채비율이 낮은 기업", "top_k": 5 }
-		if (!payload.containsKey("prompt")) {
-			throw new IllegalArgumentException("prompt 파라미터가 필요합니다.");
-		}
-		ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/financial-data/search");
-		return ResponseEntity.ok(response.getBody());
-	}
-	
-	/**
-	 * 2. 재무제표 직접 입력 처리
-	 * 실제 AI 서버에 POST 요청을 보냄
-	 */
-	@PostMapping("/financial")
-	public ResponseEntity<?> forwardFinancialData(@RequestBody Map<String, Object> payload) {
-		// 예시: { "company_name": ..., "financial_data": {...}, "report_type": ..., "additional_context": ... }
-		if (!payload.containsKey("financial_data")) {
-			throw new FinancialDataParseException("financial_data가 누락되었거나 형식이 올바르지 않습니다.");
-		}
-		// 선택적 필드: financial_data.corp_name, additional_context
-		// (별도 검증 없이 그대로 전달)
-		ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
-		return ResponseEntity.ok(response.getBody());
-	}
+
+    /**
+     * 공통적으로 AI 서버에 요청을 보내는 메서드
+     */
+    private ResponseEntity<String> sendToAiServer(Object payload, String endpoint) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Object> requestEntity = new HttpEntity<>(payload, headers);
+
+        try {
+            return restTemplate.postForEntity(aiServerUrl + endpoint, requestEntity, String.class);
+        } catch (Exception e) {
+            throw new AIServerUnavailableException("AI 서버와 통신 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 1. 일반 텍스트 쿼리 처리 (예: "삼성전자 등급 알려줘")
+     * 실제 AI 서버에 POST 요청을 보냄
+     */
+    @PostMapping("/ask")
+    public ResponseEntity<?> forwardQuery(@RequestBody Map<String, Object> payload) {
+        // 예시: { "prompt": "매출액이 높고 부채비율이 낮은 기업", "top_k": 5 }
+        if (!payload.containsKey("prompt")) {
+            throw new IllegalArgumentException("prompt 파라미터가 필요합니다.");
+        }
+        log.info("AI 서버로 전송할 질의: " + payload.get("prompt"));
+
+        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/financial-data/search");
+
+        log.info("AI 서버로부터 응답: " + response.getBody());
+
+        return ResponseEntity.ok(response.getBody());
+    }
+
+    /**
+     * 2. 재무제표 직접 입력 처리
+     * 실제 AI 서버에 POST 요청을 보냄
+     */
+    @PostMapping("/financial")
+    public ResponseEntity<?> forwardFinancialData(@RequestBody Map<String, Object> payload) {
+        // 예시: { "company_name": ..., "financial_data": {...}, "report_type": ..., "additional_context": ... }
+        if (!payload.containsKey("financial_data")) {
+            throw new FinancialDataParseException("financial_data가 누락되었거나 형식이 올바르지 않습니다.");
+        }
+        // 선택적 필드: financial_data.corp_name, additional_context
+        // (별도 검증 없이 그대로 전달)
+        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
+        return ResponseEntity.ok(response.getBody());
+    }
 }
 

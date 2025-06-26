@@ -24,6 +24,24 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'         // JDBC 관련 설정
+    implementation 'org.springframework.boot:spring-boot-starter-web'           // 웹 서버 및 MVC
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'      // JPA ORM
+    implementation 'org.springframework.boot:spring-boot-starter-security'      // Spring Security
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    implementation 'com.mysql:mysql-connector-j:8.0.33'                          // MySQL 드라이버
+
+    compileOnly 'org.projectlombok:lombok'                                      // 롬복 어노테이션
+    annotationProcessor 'org.projectlombok:lombok'                              // 롬복 어노테이션 프로세서
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'             // 개발용 도구
+    implementation 'com.h2database:h2:2.3.232'                                   // H2 인메모리 DB (테스트/대체용)
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'      // 테스트 프레임워크
+    testImplementation 'org.apache.logging.log4j:log4j-api:2.20.0'              // Log4j API (테스트용 로깅)
+    testImplementation 'org.apache.logging.log4j:log4j-core:2.20.0'             // Log4j Core
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'                // JUnit 런타임 런처
 
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
