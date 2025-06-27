@@ -36,14 +36,15 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'                              // 롬복 어노테이션 프로세서
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'             // 개발용 도구
-    implementation 'com.h2database:h2:2.3.232'                                   // H2 인메모리 DB (테스트/대체용)
+    implementation 'com.h2database:h2:2.3.232'
+    // H2 인메모리 DB (테스트/대체용)
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'      // 테스트 프레임워크
-    testImplementation 'org.apache.logging.log4j:log4j-api:2.20.0'              // Log4j API (테스트용 로깅)
+    testImplementation 'org.apache.logging.log4j:log4j-api:2.20.0'
+    // Log4j API (테스트용 로깅)
     testImplementation 'org.apache.logging.log4j:log4j-core:2.20.0'             // Log4j Core
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'                // JUnit 런타임 런처
 }
-
 
 tasks.named('test') {
     useJUnitPlatform()

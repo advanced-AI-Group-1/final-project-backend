@@ -1,4 +1,9 @@
 package com.example.finalproject.exception;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 /**
  * API 응답을 표준화하기 위한 제네릭 래퍼 클래스입니다.
  *
@@ -27,6 +32,9 @@ package com.example.finalproject.exception;
  *
  * @param <T> 응답 데이터 타입
  */
+
+@Getter
+@NoArgsConstructor
 public class ApiResponse<T> {
   private boolean success;
   private T data;

@@ -1,16 +1,16 @@
 package com.example.finalproject.domain.user.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
+import lombok.*;
 
 import java.time.LocalDateTime;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "USERS")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@AllArgsConstructor
 public class UserEntity {
 
     @Id
