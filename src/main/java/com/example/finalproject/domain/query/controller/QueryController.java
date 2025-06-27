@@ -81,11 +81,11 @@ public class QueryController {
         if (!payload.containsKey("prompt")) {
             throw new IllegalArgumentException("prompt 파라미터가 필요합니다.");
         }
-        log.info("AI 서버로 전송할 질의: " + payload.get("prompt"));
+        log.info("VectorDB(AI 서버)로 전송할 질의: " + payload.get("prompt"));
 
         ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/financial-data/search");
 
-        log.info("AI 서버로부터 응답: " + response.getBody());
+        log.info("AI 서버로부터 응답(보고서 json): " + response.getBody());
 
         return ResponseEntity.ok(response.getBody());
     }
@@ -103,6 +103,8 @@ public class QueryController {
         // 선택적 필드: financial_data.corp_name, additional_context
         // (별도 검증 없이 그대로 전달)
         ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
+        log.info("AI 서버로부터 응답(보고서 json): " + response.getBody());
+
         return ResponseEntity.ok(response.getBody());
     }
 }
