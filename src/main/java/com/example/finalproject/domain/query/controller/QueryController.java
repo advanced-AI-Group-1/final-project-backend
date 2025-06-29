@@ -1,11 +1,17 @@
 package com.example.finalproject.domain.query.controller;
 
+import com.example.finalproject.domain.report.entity.ReportEntity;
+import com.example.finalproject.domain.report.service.ReportService;
 import com.example.finalproject.exception.error.AIServerUnavailableException;
 import com.example.finalproject.exception.error.FinancialDataParseException;
+import java.io.IOException;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,6 +54,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/query")
+@RequiredArgsConstructor
 @Slf4j
 public class QueryController {
 
@@ -55,6 +62,7 @@ public class QueryController {
     private String aiServerUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ReportService reportService;
 
     /**
      * 공통적으로 AI 서버에 요청을 보내는 메서드
@@ -85,7 +93,7 @@ public class QueryController {
 
         ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/financial-data/search");
 
-        log.info("AI 서버로부터 응답(보고서 json): " + response.getBody());
+        log.info("AI 서버로부터 응답: " + response.getBody());
 
         return ResponseEntity.ok(response.getBody());
     }
@@ -97,15 +105,49 @@ public class QueryController {
     @PostMapping("/financial")
     public ResponseEntity<?> forwardFinancialData(@RequestBody Map<String, Object> payload) {
         // 예시: { "company_name": ..., "financial_data": {...}, "report_type": ..., "additional_context": ... }
+        // 선택적 필드: financial_data.corp_name, additional_context
         if (!payload.containsKey("financial_data")) {
             throw new FinancialDataParseException("financial_data가 누락되었거나 형식이 올바르지 않습니다.");
         }
-        // 선택적 필드: financial_data.corp_name, additional_context
-        // (별도 검증 없이 그대로 전달)
-        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
-        log.info("AI 서버로부터 응답(보고서 json): " + response.getBody());
+        log.info("VectorDB(AI 서버)로 전송할 재무제표: " + payload.get("financial_data"));
+        String companyName = extractCompanyName(payload);
+        if (companyName == null || companyName.isBlank()) {
+            return ResponseEntity.badRequest().body("company_name 또는 financial_data.corp_name이 필요합니다.");
+        }
 
-        return ResponseEntity.ok(response.getBody());
+        try {
+            Optional<ReportEntity> optional = reportService.findReportByCorpName(companyName);
+            String safeCorpName = reportService.sanitizeDirectoryName(companyName);
+
+            if (optional.isPresent()) {
+                Map<String, Object> reportJson = reportService.readReportFromFile(safeCorpName);
+                return ResponseEntity.ok(reportJson);
+            }
+
+            // 없으면 AI 서버 호출 후 저장
+            ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
+            String savedUrl = reportService.saveReportFromJsonString(response.getBody());
+
+            return ResponseEntity.ok(Map.of("report_url", savedUrl));
+
+        } catch (IOException e) {
+            log.error("파일 처리 중 오류", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("보고서 파일 오류");
+        } catch (Exception e) {
+            log.error("AI 호출 또는 저장 실패", e);
+            return ResponseEntity.internalServerError().body("보고서 생성 오류");
+        }
     }
+
+    private String extractCompanyName(Map<String, Object> payload) {
+        String name = (String) payload.getOrDefault("company_name", null);
+        if (name != null && !name.isBlank()) return name;
+
+        Map<String, Object> financialData = (Map<String, Object>) payload.get("financial_data");
+        return (String) financialData.getOrDefault("corp_name", null);
+    }
+
+
 }
+
 
