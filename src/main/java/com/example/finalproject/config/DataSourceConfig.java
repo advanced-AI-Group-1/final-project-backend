@@ -36,15 +36,25 @@ import java.sql.SQLException;
 @Configuration
 public class DataSourceConfig {
 
-    @Value("${database.mysql.url}")
+    // ⚠️ 기존 메인 MySQL 설정 (현재 주석 처리함)
+    // @Value("${database.mysql.url}")
+    // private String mysqlUrl;
+    // @Value("${database.mysql.username}")
+    // private String mysqlUsername;
+    // @Value("${database.mysql.password}")
+    // private String mysqlPassword;
+
+    // ✅ 테스트용 MySQL 설정 (application.yml의 spring.datasource.* 참조)
+    @Value("${spring.datasource.url}")
     private String mysqlUrl;
 
-    @Value("${database.mysql.username}")
+    @Value("${spring.datasource.username}")
     private String mysqlUsername;
 
-    @Value("${database.mysql.password}")
+    @Value("${spring.datasource.password}")
     private String mysqlPassword;
 
+    // ✅ H2 fallback 설정
     @Value("${database.h2.url}")
     private String h2Url;
 
@@ -54,38 +64,34 @@ public class DataSourceConfig {
     @Value("${database.h2.password}")
     private String h2Password;
 
-    private Server h2TcpServer;  // H2 TCP 서버 참조
+    private Server h2TcpServer;
 
     @Bean
     @Primary
     public DataSource dataSource() {
-        //먼저 mysql에 연결 시도
         try {
+            // MySQL 연결 시도
             HikariDataSource mysqlDataSource = new HikariDataSource();
             mysqlDataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
             mysqlDataSource.setJdbcUrl(mysqlUrl);
             mysqlDataSource.setUsername(mysqlUsername);
             mysqlDataSource.setPassword(mysqlPassword);
 
-            //연결 테스트
             Connection conn = mysqlDataSource.getConnection();
             conn.close();
 
             log.info("🔌 MySQL 연결 성공");
             return mysqlDataSource;
         } catch (Exception e) {
-            log.info("mysql 연결 실패, h2로 자동 전환", e);
+            log.warn("❌ MySQL 연결 실패, H2로 자동 전환", e);
 
             try {
-                // H2 TCP 서버 시작
                 h2TcpServer = Server.createTcpServer(
                         "-tcp", "-tcpAllowOthers", "-tcpPort", "9092"
-                );
-                h2TcpServer.start();
+                ).start();
                 log.info("🚀 H2 TCP 서버 시작됨 (포트: 9092)");
-
-            } catch (SQLException serverEx) {
-                log.warn("H2 TCP 서버 시작 실패: {}", serverEx.getMessage());
+            } catch (SQLException ex) {
+                log.error("⚠️ H2 TCP 서버 시작 실패: {}", ex.getMessage());
             }
 
             HikariDataSource h2DataSource = new HikariDataSource();
@@ -99,3 +105,85 @@ public class DataSourceConfig {
     }
 }
 
+
+//package com.example.finalproject.config;
+//
+//import com.zaxxer.hikari.HikariDataSource;
+//
+//import lombok.extern.log4j.Log4j2;
+//import org.h2.tools.Server;
+//import org.springframework.beans.factory.annotation.Value;
+//import org.springframework.context.annotation.Bean;
+//import org.springframework.context.annotation.Configuration;
+//import org.springframework.context.annotation.Primary;
+////import javax.sql.DataSource;
+//import java.sql.Connection;
+//import java.sql.SQLException;
+//
+//@Log4j2
+//@Configuration
+//public class DataSourceConfig {
+//
+//    @Value("${database.mysql.url}")
+//    private String mysqlUrl;
+//
+//    @Value("${database.mysql.username}")
+//    private String mysqlUsername;
+//
+//    @Value("${database.mysql.password}")
+//    private String mysqlPassword;
+//
+//    @Value("${database.h2.url}")
+//    private String h2Url;
+//
+//    @Value("${database.h2.username}")
+//    private String h2Username;
+//
+//    @Value("${database.h2.password}")
+//    private String h2Password;
+//
+//    private Server h2TcpServer;  // H2 TCP 서버 참조
+//
+//    @Bean
+//    @Primary
+//    public DataSource dataSource() {
+//        //먼저 mysql에 연결 시도
+//        try {
+//            HikariDataSource mysqlDataSource = new HikariDataSource();
+//            mysqlDataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+//            mysqlDataSource.setJdbcUrl(mysqlUrl);
+//            mysqlDataSource.setUsername(mysqlUsername);
+//            mysqlDataSource.setPassword(mysqlPassword);
+//
+//            //연결 테스트
+//            Connection conn = mysqlDataSource.getConnection();
+//            conn.close();
+//
+//            log.info("🔌 MySQL 연결 성공");
+//            return mysqlDataSource;
+//        } catch (Exception e) {
+//            log.info("mysql 연결 실패, h2로 자동 전환", e);
+//
+//            try {
+//                // H2 TCP 서버 시작
+//                h2TcpServer = Server.createTcpServer(
+//                        "-tcp", "-tcpAllowOthers", "-tcpPort", "9092"
+//                );
+//                h2TcpServer.start();
+//                log.info("🚀 H2 TCP 서버 시작됨 (포트: 9092)");
+//
+//            } catch (SQLException serverEx) {
+//                log.warn("H2 TCP 서버 시작 실패: {}", serverEx.getMessage());
+//            }
+//
+//            HikariDataSource h2DataSource = new HikariDataSource();
+//            h2DataSource.setDriverClassName("org.h2.Driver");
+//            h2DataSource.setJdbcUrl(h2Url);
+//            h2DataSource.setUsername(h2Username);
+//            h2DataSource.setPassword(h2Password);
+//
+//            return h2DataSource;
+//        }
+//    }
+//}
+//

@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.example.finalproject.exception.error.DuplicateUserException;
 
 import java.util.Optional;
 /**
@@ -42,18 +43,45 @@ public class UserService {
         return userRepository.findByUserId(userId);
     }
 
+//    public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
+//        return userRepository.save(
+//                new UserEntity(
+//                        userId,
+//                        passwordEncoder.encode(rawPassword),
+//                        true,
+//                        LocalDateTime.now(),
+//                        null,
+//                        false,
+//                        isDirectSignup
+//                )
+//        );
+//    }
+
     public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
+        if (userRepository.findByUserId(userId).isPresent()) {
+            throw new DuplicateUserException("이미 존재하는 사용자입니다: " + userId);
+        }
+
         return userRepository.save(
-            new UserEntity(
-                userId,
-                passwordEncoder.encode(rawPassword),
-                true,
-                LocalDateTime.now(),
-                null,
-                false,
-                isDirectSignup
-            )
+                UserEntity.builder()
+                        .userId(userId)
+                        .password(passwordEncoder.encode(rawPassword))
+                        .enabled(true)
+                        .dateCreated(LocalDateTime.now())
+                        .dateWithdraw(null)
+                        .withdraw(false)
+                        .isDirectSignup(isDirectSignup)
+                        .build()
         );
     }
 
+    public boolean login(String userId, String rawPassword) {
+        Optional<UserEntity> optionalUser = userRepository.findByUserId(userId);
+        if (optionalUser.isPresent()) {
+            UserEntity user = optionalUser.get();
+            return passwordEncoder.matches(rawPassword, user.getPassword());
+        }
+        return false;
+
+    }
 }
