@@ -4,23 +4,19 @@ import com.example.finalproject.domain.report.entity.ReportEntity;
 import com.example.finalproject.domain.report.service.ReportService;
 import com.example.finalproject.exception.error.AIServerUnavailableException;
 import com.example.finalproject.exception.error.FinancialDataParseException;
-import java.io.IOException;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * [QueryController 클래스 설명]
@@ -116,10 +112,10 @@ public class QueryController {
         }
 
         try {
-            Optional<ReportEntity> optional = reportService.findReportByCorpName(companyName);
-            String safeCorpName = reportService.sanitizeDirectoryName(companyName);
+            Optional<ReportEntity> optional = reportService.findReportByCorpName(companyName); // 보고서가 이미 존재하는지 확인
+            String safeCorpName = reportService.sanitizeDirectoryName(companyName); // 디렉토리 이름 안전하게 변환
 
-            if (optional.isPresent()) {
+            if (optional.isPresent()) { // 이미 보고서가 존재하면 파일에서 읽어오기
                 Map<String, Object> reportJson = reportService.readReportFromFile(safeCorpName);
                 return ResponseEntity.ok(reportJson);
             }

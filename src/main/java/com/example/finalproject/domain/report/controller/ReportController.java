@@ -66,8 +66,6 @@ public class ReportController {
     public ResponseEntity<ApiResponse<String>> saveJsonReport(@RequestBody Map<String, Object> reportJson) {
         String corpName = (String) reportJson.get("company_name");
         if (corpName == null || corpName.isBlank()) { // 회사 이름
-
-
             // 이 없을 경우 기본값 설정
             corpName = "알수없음";
         }
