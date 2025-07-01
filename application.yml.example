@@ -1,0 +1,46 @@
+database:
+  mysql:
+    url: db-url
+    username: 
+    password: 
+  h2:
+    url: jdbc:h2:mem:final_db;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_UPPER=TRUE
+    username: admin
+    password:
+
+
+
+spring:
+
+  jpa:
+    hibernate:
+      ddl-auto: update # update, 처음 시작 시에는 create혹은 create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        show_sql: true
+        format_sql: true
+        naming:
+          physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
+
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+  servlet:
+    multipart:
+      resolve-lazily: true
+      enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+#    org.hibernate.type.descriptor.sql: trace  # 파라미터 바인딩 로그 출력용 (옵션)
+
+server:
+  port: 8080
+  servlet:
+    session:
+      timeout: 180m
