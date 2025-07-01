@@ -6,6 +6,7 @@ import com.example.finalproject.exception.error.FinancialDataParseException;
 import com.example.finalproject.exception.error.PdfGenerationException;
 import com.example.finalproject.exception.error.UserNotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,6 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AIServerUnavailableException.class)
     public ResponseEntity<String> handleAIError(AIServerUnavailableException e) {
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body("AI 서버 응답 없음: " + e.getMessage());
     }
 

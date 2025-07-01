@@ -41,9 +41,13 @@ public class SecurityConfig {
 				.csrf(csrf -> csrf.disable())
 				.cors(cors -> cors.configure(http)) // CORS 설정 활성화
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/", "/login", "/oauth2/**", "/api/query/**").permitAll() // /api/query/** 경로 추가
+						.requestMatchers("/", "/login", "/oauth2/**", 
+						"/api/query/**", "/api/user/test", 
+						"/api/report/**", "/api/report/download-json/**",
+						"/h2-console/**").permitAll() // H2 콘솔 접근 허용
 						.anyRequest().authenticated()
 				)
+				.headers(headers -> headers.frameOptions().disable()) // H2 콘솔을 위한 frame 옵션 비활성화
 				.oauth2Login(oauth2 -> oauth2
 						.userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
 						.successHandler(oAuth2SuccessHandler)
