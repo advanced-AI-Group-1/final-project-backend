@@ -4,6 +4,7 @@ import com.example.finalproject.domain.user.dto.LoginRequestDTO;
 import com.example.finalproject.domain.user.dto.UserRegisterDTO;
 import com.example.finalproject.domain.user.dto.UserResponseDTO;
 import com.example.finalproject.domain.user.entity.UserEntity;
+import com.example.finalproject.domain.user.security.CustomOAuth2User;
 import com.example.finalproject.domain.user.service.UserService;
 import com.example.finalproject.exception.ApiResponse;
 import com.example.finalproject.exception.error.DuplicateUserException;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -168,17 +170,14 @@ public class UserController {
 
     /**
      * 사용자 탈퇴 API
-     *
-     * @param userId   탈퇴할 사용자 ID
-     * @param password 사용자 비밀번호 (직접 가입한 사용자의 경우 필수)
-     * @return 성공 메시지 또는 오류 메시지
      */
-    @DeleteMapping("/{userId}")
+    @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<String>> withdrawUser(
-            @PathVariable String userId,
+            @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestParam(required = false) String password) {
 
         try {
+            String userId = principal.getUserId(); // 시큐리티 세션에서 userId 추출
             userService.withdrawUser(userId, password);
             return ResponseEntity.ok(ApiResponse.success("회원 탈퇴가 완료되었습니다."));
         } catch (UserNotFoundException e) {
