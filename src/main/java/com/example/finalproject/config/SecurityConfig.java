@@ -39,8 +39,9 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 				.csrf(csrf -> csrf.disable())
+				.cors(cors -> cors.configure(http)) // CORS 설정 활성화
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/", "/login", "/oauth2/**").permitAll()
+						.requestMatchers("/", "/login", "/oauth2/**", "/api/query/**").permitAll() // /api/query/** 경로 추가
 						.anyRequest().authenticated()
 				)
 				.oauth2Login(oauth2 -> oauth2

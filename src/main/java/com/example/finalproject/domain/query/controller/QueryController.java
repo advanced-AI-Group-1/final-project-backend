@@ -57,7 +57,7 @@ public class QueryController {
     @Value("${ai.server.url:http://localhost:8000}")
     private String aiServerUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ReportService reportService;
 
     /**

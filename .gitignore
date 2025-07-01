@@ -46,3 +46,4 @@ application-secret.yml
 *.log
 application.yml
 src/main/resources/application.yml
+src/main/resources/application.yml~
