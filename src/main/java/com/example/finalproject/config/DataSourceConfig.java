@@ -68,8 +68,6 @@ public class DataSourceConfig {
     @Value("${database.h2.password}")
     private String h2Password;
 
-    private Server h2TcpServer;
-
     @Bean
     @Primary
     public DataSource dataSource() {
@@ -90,7 +88,7 @@ public class DataSourceConfig {
             log.warn("❌ MySQL 연결 실패, H2로 자동 전환", e);
 
             try {
-                h2TcpServer = Server.createTcpServer(
+                Server.createTcpServer(
                         "-tcp", "-tcpAllowOthers", "-tcpPort", "9092"
                 ).start();
                 log.info("🚀 H2 TCP 서버 시작됨 (포트: 9092)");

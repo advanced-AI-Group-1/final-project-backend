@@ -5,7 +5,6 @@ import com.example.finalproject.domain.user.entity.UserEntity;
 import com.example.finalproject.domain.user.repository.OAuthRepository;
 import com.example.finalproject.domain.user.repository.UserRepository;
 import com.example.finalproject.domain.user.security.CustomOAuth2User;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -61,13 +60,14 @@ public class OAuth2UserServiceImpl extends DefaultOAuth2UserService {
         String provider = userRequest.getClientRegistration().getRegistrationId();
         String providerId = null;
 
-        if (provider.equals("google")) {
-            providerId = oAuth2User.getAttribute("sub");
-        } else if (provider.equals("naver")) {
-            Map<String, Object> response = (Map<String, Object>) oAuth2User.getAttribute("response");
-            providerId = (String) response.get("id");
-        } else if (provider.equals("kakao")) {
-            providerId = String.valueOf(oAuth2User.getAttribute("id"));
+        switch (provider) {
+            case "google" -> providerId = oAuth2User.getAttribute("sub");
+            case "naver" -> {
+                Map<String, Object> response = oAuth2User.getAttribute("response"); // 오류시 수정할 것 ->Map<String, Object> response = (Map<String, Object>) oAuth2User.getAttribute("response");
+                assert response != null;
+                providerId = (String) response.get("id");
+            }
+            case "kakao" -> providerId = String.valueOf(oAuth2User.getAttribute("id"));
         }
 
         Optional<OAuthEntity> existingOAuth = oAuthRepository.findByProviderAndProviderId(provider, providerId);

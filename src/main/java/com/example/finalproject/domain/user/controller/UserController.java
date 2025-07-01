@@ -58,10 +58,6 @@ import java.util.Optional;
  * }
  * → ApiResponse<String>
  * </pre>
- *
- * @author
- * @version 1.0
- * @since 2025-06-24
  */
 
 @RestController
@@ -73,7 +69,7 @@ public class UserController {
     private final UserService userService;
 
     @RestControllerAdvice
-    public class GlobalExceptionHandler {
+    public static class GlobalExceptionHandler {
 
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ApiResponse<String>> handleValidationErrors(
@@ -128,12 +124,12 @@ public class UserController {
         log.info(registerDTO.toString());
 
         try {
-            userService.registerUser(
+            UserEntity user = userService.registerUser(
                     registerDTO.getUserId(),
                     registerDTO.getPassword(),
                     registerDTO.isDirectSignup()
             );
-
+            log.info("회원가입 성공: {}", user.getUserId());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("User registered successfully"));
         } catch (DuplicateUserException e) {

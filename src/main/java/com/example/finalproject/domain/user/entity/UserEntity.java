@@ -1,17 +1,9 @@
 package com.example.finalproject.domain.user.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.LocalDateTime;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 /**
  * 사용자 정보를 나타내는 엔티티 클래스입니다.
@@ -61,9 +53,6 @@ public class UserEntity {
 
     @Column(nullable = false)
     private boolean isDirectSignup;
-
-    public void setPassword(String encode) {
-    }
 
     /**
      * 사용자 탈퇴 처리 메서드
