@@ -7,3 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface OAuthRepository extends JpaRepository<OAuthEntity, Long> {
   Optional<OAuthEntity> findByProviderAndProviderId(String provider, String providerId);
 }
+
+

@@ -1,11 +1,17 @@
 package com.example.finalproject.domain.report.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "REPORT")
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ReportEntity {
 
     @Id

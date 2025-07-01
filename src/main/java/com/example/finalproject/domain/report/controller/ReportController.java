@@ -1,46 +1,52 @@
 package com.example.finalproject.domain.report.controller;
 
-import com.example.finalproject.exception.error.PdfGenerationException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import com.example.finalproject.domain.report.entity.ReportEntity;
+import com.example.finalproject.domain.report.repository.ReportRepository;
+import com.example.finalproject.exception.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Optional;
 
 /**
- * [📄 ReportController 클래스 설명]
- *
- * 이 컨트롤러는 Agent AI 서버가 생성한 PDF 보고서를 서버 측에서 세션별로 저장하고,
- * 사용자(프론트엔드)가 이후 다운로드할 수 있도록 제공하는 역할을 한다.
- *
- * 예 : /tmp/reports/{세션ID}/report_{fileId}.pdf
- *
- * 주요 흐름:
- * - POST /api/report/upload: Agent AI 서버가 생성한 PDF 파일을 HTTP body로 전송
- * - GET /api/report/download/{fileId}: 사용자에게 해당 PDF 파일을 다운로드 제공
- *
- * 세션 ID 기반으로 임시 저장소 디렉토리를 구분하며, UUID 기반으로 고유 파일명을 생성한다.
- * 세션 종료 시 해당 폴더는 자동 삭제된다 (SessionCleanupListener 참조).
- *
- * 보안상 세션ID는 사용자에게 노출되지 않으며, 프론트는 UUID만 사용한다.
- *
- * 확장 기능 :  보고서 목록 조회, 다운로드 유효시간 제한, 파일 자동 만료 기능, 남은 스토리지 용량 체크 로직 (향후 대량 저장 고려 시)
+ * ReportController
+ * <p>
+ * 기업 보고서(JSON)를 저장하고 조회하는 REST 컨트롤러.
+ * <p>
+ * ✅ 주요 기능:
+ * - 기업명 기반 JSON 보고서 저장 (POST /api/report/save-json)
+ * - 기업명 기반 JSON 보고서 조회 (GET /api/report/download-json/{corpName})
+ * <p>
+ * ✅ 저장 구조:
+ * - 저장 경로: /tmp/reports/{corpName}/report.json
+ * - DB에는 corpName, 생성일, 접근 URL을 함께 저장
+ * <p>
+ * ✅ 특징:
+ * - UUID 및 세션 기반이 아닌 기업명 기반 디렉토리 사용
+ * - 전체 사용자 접근이 가능한 정적 URL 제공
+ * - JSON 파일은 ObjectMapper를 이용해 저장/조회
+ * <p>
+ * 사용 환경: Linux 서버 기준 (디렉토리 이름 정제 시 '/' 문자만 제거)
  */
+
 @RestController
 @RequestMapping("/api/report")
+@RequiredArgsConstructor
+@Slf4j
 public class ReportController {
+
+    private final ReportRepository reportRepository;
 
     // 임시 디렉토리 경로 설정
     static private final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/reports";
@@ -51,60 +57,84 @@ public class ReportController {
             Files.createDirectories(Paths.get(TEMP_DIR));
         } catch (IOException e) {
             // 무시 (이미 존재할 수 있음)
+            log.warn("임시 디렉토리 생성 실패", e);
         }
     }
 
-    //1. uploadReport : PDF 파일 업로드를 위한 엔드포인트 (세션 + UUID 기반 ->
-    // 사용자에게 세션을 노출하지 않기 위해 UUID를 사용하여 파일 이름을 생성)
-    @PostMapping(value = "/upload", consumes = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<String> receiveGeneratedReport(
-            HttpServletRequest request,
-            HttpSession session) {
+    // 1. JSON 형식의 보고서를 로컬 서버에 .json파일로 저장, DB에 경로 저장 후 URI 반환, 기업명 기반
+    @PostMapping(value = "/save-json")
+    public ResponseEntity<ApiResponse<String>> saveJsonReport(@RequestBody Map<String, Object> reportJson) {
+        String corpName = (String) reportJson.get("company_name");
+        if (corpName == null || corpName.isBlank()) { // 회사 이름
+            // 이 없을 경우 기본값 설정
+            corpName = "알수없음";
+        }
 
-        // session에서 사용자 정보 가져오기
-        String sessionId = session.getId();
-        // UUID를 사용하여 파일 이름 생성
-        String fileId = UUID.randomUUID().toString();
-        String fileName = "report_" + fileId + ".pdf"; // 파일 이름 형식: report_{UUID}.pdf
-        // temp 경로 생성
-        Path sessionDir = Paths.get(TEMP_DIR, sessionId);
-
+        log.info("JSON 보고서 저장 요청: 회사명 = {}", corpName);
 
         try {
-            // 파일을 세션 디렉토리에 저장 + OS에 따라 경로 구분자 처리
-            Files.createDirectories(sessionDir);
-            File targetFile = new File(sessionDir.toFile(), fileName);
-
-            try (InputStream inputStream = request.getInputStream();
-                 OutputStream outputStream = Files.newOutputStream(targetFile.toPath())) {
-                inputStream.transferTo(outputStream);
-            }
-
-            return ResponseEntity.ok(fileId);
+            String safeCorpName = sanitizeDirectoryName(corpName);
+            saveReportToFile(safeCorpName, reportJson); // JSON 파일 로컬에 저장
+            String reportUrl = "/api/report/download-json/" + safeCorpName; // 파일 다운로드 URI 생성
+            ReportEntity report = ReportEntity.builder()
+                    .corpName(corpName)
+                    .dateCreated(LocalDateTime.now())
+                    .reportUrl(reportUrl)
+                    .build();
+            reportRepository.save(report); // DB에 보고서 정보 저장\
+            return ResponseEntity.ok(ApiResponse.success(reportUrl));
         } catch (IOException e) {
-            throw new PdfGenerationException(PdfGenerationException.ErrorType.PDF_GENERATION_FAILED);
+            log.error("보고서 저장 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.error("보고서 저장 중 오류 발생"));
         }
     }
 
-    //2. downloadReport : PDF 파일 다운로드를 위한 엔드포인트 (세션 + UUID 기반)
-    @GetMapping("/download/{fileId}")
-    public ResponseEntity<Resource> downloadReport(
-            @PathVariable("fileId") String fileId,
-            HttpSession session) {
-
-        String sessionId = session.getId();
-        String fileName = "report_" + fileId + ".pdf"; // 파일 이름 형식: report_{UUID}.pdf
-        File file = Paths.get(TEMP_DIR, sessionId, fileName).toFile();
-
-        if (!file.exists()) {
-            throw new PdfGenerationException(PdfGenerationException.ErrorType.PDF_FILE_NOT_FOUND);
+    //2. 기업명 기반 JSON 보고서 반환 (ApiResponse 없이 JSON 그대로 반환)
+    @GetMapping("/download-json/{corpName}")
+    public ResponseEntity<Map<String, Object>> serveJsonReport(@PathVariable String corpName) {
+        Optional<ReportEntity> optionalReport = reportRepository.findByCorpName(corpName);
+        if (optionalReport.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        Resource resource = new FileSystemResource(file);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                .body(resource);
+        try {
+            String safeCorpName = sanitizeDirectoryName(corpName);
+            Map<String, Object> reportJson = readReportFromFile(safeCorpName); // 로컬 서버에 저장된 JSON 파일 읽기
+            return ResponseEntity.ok(reportJson);
+        } catch (IOException e) {
+            log.error("보고서 파일 읽기 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
+    /**
+     * 디렉토리 이름에서 "/" 제거 (Linux 기준)
+     */
+    private String sanitizeDirectoryName(String corpName) {
+        return corpName.replace("/", "_");
+    }
+
+    /**
+     * JSON 파일 저장
+     */
+    private void saveReportToFile(String safeCorpName, Map<String, Object> reportJson) throws IOException {
+        Path corpDir = Paths.get(TEMP_DIR, safeCorpName);
+        Files.createDirectories(corpDir);
+
+        Path targetPath = corpDir.resolve("report.json");
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(targetPath.toFile(), reportJson);
+    }
+
+    /**
+     * JSON 파일 읽기
+     */
+    private Map<String, Object> readReportFromFile(String safeCorpName) throws IOException {
+        Path filePath = Paths.get(TEMP_DIR, safeCorpName, "report.json");
+        if (!Files.exists(filePath)) {
+            throw new FileNotFoundException("파일이 존재하지 않음: " + filePath.toString());
+        }
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(filePath.toFile(), Map.class);
+    }
 }
