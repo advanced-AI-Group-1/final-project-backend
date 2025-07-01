@@ -62,4 +62,8 @@ public class UserEntity {
         this.withdraw = true;
         this.dateWithdraw = LocalDateTime.now();
     }
+
+    public void setPassword(String encode) {
+        this.password = encode;
+    }
 }

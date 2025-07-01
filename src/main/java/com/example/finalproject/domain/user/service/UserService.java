@@ -112,7 +112,6 @@ public class UserService {
     public void updatePassword(String email, String newPassword) {
         UserEntity user = userRepository.findByUserId(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
-
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
