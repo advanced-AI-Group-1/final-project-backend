@@ -11,7 +11,12 @@ import com.example.finalproject.exception.ApiResponse;
 import com.example.finalproject.exception.error.DuplicateUserException;
 import com.example.finalproject.exception.error.UnAuthorizedException;
 import com.example.finalproject.exception.error.UserNotFoundException;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -79,22 +84,25 @@ public class UserController {
         }
     }
 
-    @GetMapping("/test")
-    public ResponseEntity<String> test() {
-        log.info("✅ /test 엔드포인트에 도달함");
-        return ResponseEntity.ok("hello");
-    }
-
-
-    // 로그인
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequestDTO request) {
-        System.out.println("📩 POST /login 요청 도착: " + request.getUserId()); // (테스트를 위해 추가됨)
-        boolean success = userService.login(request.getUserId(), request.getPassword());
-        if (success) {
-            return ResponseEntity.ok("로그인 성공");
-        } else {
-            return ResponseEntity.status(401).body("로그인 실패");
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequest) {
+        log.info("로그인 요청 수신 - 사용자 ID: {}", loginRequest.getUserId());
+        try {
+            String token = userService.login(loginRequest.getUserId(), loginRequest.getPassword());
+            if (token != null) {
+                log.info("로그인 성공 - 사용자 ID: {}", loginRequest.getUserId());
+                Map<String, String> response = new HashMap<>();
+                response.put("token", token);
+                return ResponseEntity.ok(response);
+            } else {
+                log.warn("로그인 실패 - 잘못된 자격 증명: {}", loginRequest.getUserId());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Collections.singletonMap("error", "아이디 또는 비밀번호가 일치하지 않습니다."));
+            }
+        } catch (Exception e) {
+            log.error("로그인 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "로그인 처리 중 오류가 발생했습니다."));
         }
     }
 
@@ -151,6 +159,13 @@ public class UserController {
     public ResponseEntity<ApiResponse<String>> withdrawUser(
             @AuthenticationPrincipal CustomOAuth2User principal,
             @RequestParam(required = false) String password) {
+
+        // 인증 정보가 없는 경우
+        if (principal == null) {
+            log.warn("사용자 탈퇴 실패 - 인증 정보 없음");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("인증 정보가 없습니다. 로그인이 필요합니다."));
+        }
 
         try {
             String userId = principal.getUserId(); // 시큐리티 세션에서 userId 추출

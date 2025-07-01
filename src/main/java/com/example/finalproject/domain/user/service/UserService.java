@@ -1,5 +1,6 @@
 package com.example.finalproject.domain.user.service;
 
+import com.example.finalproject.config.jwt.JwtProvider;
 import com.example.finalproject.domain.user.entity.OAuthEntity;
 import com.example.finalproject.domain.user.entity.UserEntity;
 import com.example.finalproject.domain.user.repository.OAuthRepository;
@@ -8,6 +9,7 @@ import com.example.finalproject.exception.error.DuplicateUserException;
 import com.example.finalproject.exception.error.UnAuthorizedException;
 import com.example.finalproject.exception.error.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,11 +41,13 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
     private final OAuthRepository oauthRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
 
     public Optional<UserEntity> findByUserId(String userId) {
         return userRepository.findByUserId(userId);
@@ -67,13 +71,24 @@ public class UserService {
         );
     }
 
-    public boolean login(String userId, String rawPassword) {
-        Optional<UserEntity> optionalUser = userRepository.findByUserId(userId);
-        if (optionalUser.isPresent()) {
-            UserEntity user = optionalUser.get();
-            return passwordEncoder.matches(rawPassword, user.getPassword());
+    public String login(String userId, String password) {
+        log.info("로그인 시도 - 사용자 ID: {}", userId);
+        Optional<UserEntity> user = userRepository.findByUserId(userId);
+        
+        if (user.isPresent()) {
+            boolean passwordMatches = passwordEncoder.matches(password, user.get().getPassword());
+            log.info("비밀번호 일치 여부: {}", passwordMatches ? "일치" : "불일치");
+        } else {
+            log.warn("사용자를 찾을 수 없음 - ID: {}", userId);
         }
-        return false;
+        
+        if (user.isPresent() && passwordEncoder.matches(password, user.get().getPassword())) {
+            String token = jwtProvider.generateToken(userId);
+            log.info("로그인 성공 - 토큰 생성됨");
+            return token;
+        }
+        log.warn("로그인 실패 - ID: {}", userId);
+        return null;
     }
 
     /**
