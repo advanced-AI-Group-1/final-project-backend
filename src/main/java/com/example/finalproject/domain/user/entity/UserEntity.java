@@ -47,4 +47,16 @@ public class UserEntity {
         this.withdraw = withdraw;
         this.isDirectSignup = isDirectSignup;
     }
+    
+    /**
+     * 사용자 탈퇴 처리 메서드
+     * - 계정 비활성화
+     * - 탈퇴 여부 표시
+     * - 탈퇴 일시 기록
+     */
+    public void withdraw() {
+        this.enabled = false;
+        this.withdraw = true;
+        this.dateWithdraw = LocalDateTime.now();
+    }
 }
