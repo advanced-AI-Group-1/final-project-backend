@@ -40,7 +40,13 @@ public class SecurityConfig {
 		http
 				.csrf(csrf -> csrf.disable())
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/", "/login", "/oauth2/**").permitAll()
+						.requestMatchers(
+								"/",
+								"/login",
+								"/oauth2/**",
+								"/api/user/signup",
+								"/api/user/login"
+						).permitAll() // ✅ 여기서 닫고 permitAll()
 						.anyRequest().authenticated()
 				)
 				.oauth2Login(oauth2 -> oauth2
@@ -49,5 +55,20 @@ public class SecurityConfig {
 				);
 
 		return http.build();
+
+//	@Bean
+//	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//		http
+//				.csrf(csrf -> csrf.disable())
+//				.authorizeHttpRequests(auth -> auth
+//						.requestMatchers("/", "/login", "/oauth2/**").permitAll()
+//						.anyRequest().authenticated()
+//				)
+//				.oauth2Login(oauth2 -> oauth2
+//						.userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
+//						.successHandler(oAuth2SuccessHandler)
+//				);
+//
+//		return http.build();
 	}
 }
