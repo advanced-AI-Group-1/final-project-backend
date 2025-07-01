@@ -51,8 +51,7 @@ dependencies {
     // Log4j API (테스트용 로깅)
     testImplementation 'org.apache.logging.log4j:log4j-core:2.20.0'             // Log4j Core
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'                // JUnit 런타임 런처
-
-
+    
 }
 
 tasks.named('test') {

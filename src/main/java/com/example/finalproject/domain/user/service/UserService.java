@@ -2,14 +2,14 @@ package com.example.finalproject.domain.user.service;
 
 import com.example.finalproject.domain.user.entity.UserEntity;
 import com.example.finalproject.domain.user.repository.UserRepository;
+import com.example.finalproject.exception.error.DuplicateUserException;
+import com.example.finalproject.exception.error.UserNotFoundException;
 import java.time.LocalDateTime;
-import lombok.Builder;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.example.finalproject.exception.error.DuplicateUserException;
 
-import java.util.Optional;
 /**
  * 사용자 관련 핵심 비즈니스 로직을 처리하는 서비스 클래스입니다.
  *
@@ -33,7 +33,6 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Builder
 public class UserService {
 
     private final UserRepository userRepository;
@@ -43,7 +42,7 @@ public class UserService {
         return userRepository.findByUserId(userId);
     }
 
-//    public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
+    //    public UserEntity registerUser(String userId, String rawPassword, boolean isDirectSignup) {
 //        return userRepository.save(
 //                new UserEntity(
 //                        userId,
@@ -63,15 +62,15 @@ public class UserService {
         }
 
         return userRepository.save(
-                UserEntity.builder()
-                        .userId(userId)
-                        .password(passwordEncoder.encode(rawPassword))
-                        .enabled(true)
-                        .dateCreated(LocalDateTime.now())
-                        .dateWithdraw(null)
-                        .withdraw(false)
-                        .isDirectSignup(isDirectSignup)
-                        .build()
+            UserEntity.builder()
+                .userId(userId)
+                .password(passwordEncoder.encode(rawPassword))
+                .enabled(true)
+                .dateCreated(LocalDateTime.now())
+                .dateWithdraw(null)
+                .withdraw(false)
+                .isDirectSignup(isDirectSignup)
+                .build()
         );
     }
 
@@ -82,6 +81,13 @@ public class UserService {
             return passwordEncoder.matches(rawPassword, user.getPassword());
         }
         return false;
+    }
 
+    public void updatePassword(String email, String newPassword) {
+        UserEntity user = userRepository.findByUserId(email)
+            .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }
