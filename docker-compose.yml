@@ -5,9 +5,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/mydb
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: password
+      - spring.datasource.url=jdbc:mysql:mysql://mysql.cxcms6k22ed0.ap-northeast-2.rds.amazonaws.com:3306/final_db
+      - spring.datasource.username=admin
+      - spring.datasource.password=mysql1234
     depends_on:
       - mysql
 
