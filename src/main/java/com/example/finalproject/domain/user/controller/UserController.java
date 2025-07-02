@@ -1,7 +1,7 @@
 package com.example.finalproject.domain.user.controller;
 
 import com.example.finalproject.domain.user.dto.LoginRequestDTO;
-//import com.example.finalproject.domain.user.dto.PasswordResetDTO;
+import com.example.finalproject.domain.user.dto.PasswordResetDTO;
 import com.example.finalproject.domain.user.dto.UserRegisterDTO;
 import com.example.finalproject.domain.user.dto.UserResponseDTO;
 import com.example.finalproject.domain.user.entity.UserEntity;
@@ -11,6 +11,7 @@ import com.example.finalproject.exception.ApiResponse;
 import com.example.finalproject.exception.error.DuplicateUserException;
 import com.example.finalproject.exception.error.UnAuthorizedException;
 import com.example.finalproject.exception.error.UserNotFoundException;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Collections;
@@ -27,6 +28,7 @@ import org.springframework.security.core.Authentication;
 
 import com.example.finalproject.config.jwt.JwtProvider;
 import java.util.Optional;
+
 
 /**
  * 사용자 관련 API 요청을 처리하는 REST 컨트롤러입니다.
@@ -81,10 +83,11 @@ public class UserController {
     private final UserService userService;
 
     @RestControllerAdvice
-    public class GlobalExceptionHandler {
+    public static class GlobalExceptionHandler {
 
         @ExceptionHandler(MethodArgumentNotValidException.class)
-        public ResponseEntity<ApiResponse<String>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        public ResponseEntity<ApiResponse<String>> handleValidationErrors(
+                MethodArgumentNotValidException ex) {
             String errorMessage = ex.getBindingResult().getFieldError().getDefaultMessage();
             return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
         }
@@ -99,22 +102,24 @@ public class UserController {
 
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequestDTO request) {
-        System.out.println("📩 POST /login 요청 도착: " + request.getUserId()); // (테스트를 위해 추가됨)
-        boolean success = userService.login(request.getUserId(), request.getPassword());
-        
-        Map<String, Object> response = new HashMap<>();
-        if (success) {
-            response.put("success", true);
-            response.put("message", "로그인 성공");
-            // JWT 토큰 생성 및 반환 (필요한 경우)
-             String token = jwtProvider.generateToken(request.getUserId());
-             response.put("token", token);
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("success", false);
-            response.put("message", "로그인 실패: 아이디 또는 비밀번호가 올바르지 않습니다.");
-            return ResponseEntity.status(401).body(response);
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequest) {
+        log.info("로그인 요청 수신 - 사용자 ID: {}", loginRequest.getUserId());
+        try {
+            String token = userService.login(loginRequest.getUserId(), loginRequest.getPassword());
+            if (token != null) {
+                log.info("로그인 성공 - 사용자 ID: {}", loginRequest.getUserId());
+                Map<String, String> response = new HashMap<>();
+                response.put("token", token);
+                return ResponseEntity.ok(response);
+            } else {
+                log.warn("로그인 실패 - 잘못된 자격 증명: {}", loginRequest.getUserId());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Collections.singletonMap("error", "아이디 또는 비밀번호가 일치하지 않습니다."));
+            }
+        } catch (Exception e) {
+            log.error("로그인 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "로그인 처리 중 오류가 발생했습니다."));
         }
     }
 
@@ -149,7 +154,7 @@ public class UserController {
                     registerDTO.getPassword(),
                     registerDTO.isDirectSignup()
             );
-
+            log.info("회원가입 성공: {}", user.getUserId());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("User registered successfully"));
         } catch (DuplicateUserException e) {
@@ -228,21 +233,21 @@ public class UserController {
         }
     }
 
-//    @PostMapping("/reset-password")
-//    public ResponseEntity<?> resetPassword(@RequestBody PasswordResetDTO request) {
-//        try {
-//            Optional<UserEntity> optionalUser = userService.findByUserId(request.getId());
-//            if (optionalUser.isEmpty()) {
-//                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-//                        .body(ApiResponse.error("존재하지 않는 사용자입니다."));
-//            }
-//            userService.updatePassword(request.getId(), request.getPassword());
-//            return ResponseEntity.status(HttpStatus.OK)
-//                    .body(ApiResponse.success("비밀번호가 성공적으로 변경되었습니다."));
-//        } catch (Exception e) {
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(ApiResponse.error("서버 오류가 발생했습니다."));
-//        }
-//    }
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody PasswordResetDTO request) {
+        try {
+            Optional<UserEntity> optionalUser = userService.findByUserId(request.getId());
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("존재하지 않는 사용자입니다."));
+            }
+            userService.updatePassword(request.getId(), request.getPassword());
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ApiResponse.success("비밀번호가 성공적으로 변경되었습니다."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("서버 오류가 발생했습니다."));
+        }
+    }
 
 }

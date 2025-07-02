@@ -20,14 +20,14 @@ import java.util.stream.Collectors;
 /**
  * JWT(JSON Web Token) 생성 및 검증을 담당하는 클래스입니다.
  * 사용자 식별 정보와 만료 시간이 포함된 JWT 토큰을 생성합니다.
- * 
+ *
  * <p>주요 기능:
  * <ul>
  *   <li>HS512 서명 알고리즘을 사용한 안전한 JWT 토큰 생성</li>
  *   <li>애플리케이션 시작 시 안전한 비밀 키 자동 생성</li>
  *   <li>기본적으로 1일 후 만료되는 토큰 발급</li>
  * </ul>
- * 
+ *
  * <p>참고: 비밀 키는 jjwt 라이브러리의 Keys 유틸리티 클래스를 사용하여
  * 안전하게 자동 생성됩니다.
  */
@@ -112,11 +112,11 @@ public class JwtProvider {
         // 여기서는 단순히 사용자 ID만 추출하지만,
         // 필요에 따라 추가 클레임을 추출하여 권한 정보를 설정할 수 있습니다.
         String userId = claims.getSubject();
-        
+
         // UserDetails 객체 생성 (여기서는 간단히 User 객체를 사용)
         // 실제로는 사용자 서비스를 통해 DB에서 사용자 정보를 조회하는 것이 좋습니다.
         UserDetails principal = new User(userId, "", new ArrayList<>());
-        
+
         // UsernamePasswordAuthenticationToken을 생성하여 반환
         return new UsernamePasswordAuthenticationToken(principal, "", principal.getAuthorities());
     }

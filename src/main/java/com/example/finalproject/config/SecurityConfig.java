@@ -59,7 +59,7 @@ public class SecurityConfig {
             "/error",
             "/favicon.ico"
     };
-    
+
 
 
     private boolean isApiRequest(HttpServletRequest request) {
@@ -105,7 +105,7 @@ public class SecurityConfig {
             })
             // JWT 인증 필터 추가
             .addFilterBefore(new JwtAuthenticationFilter(this.jwtProvider), UsernamePasswordAuthenticationFilter.class);
-            
+
         return http.build();
     }
 
@@ -116,7 +116,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
