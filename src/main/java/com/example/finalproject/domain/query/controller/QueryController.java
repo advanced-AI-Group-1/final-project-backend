@@ -57,7 +57,7 @@ public class QueryController {
     @Value("${ai.server.url:http://localhost:8000}")
     private String aiServerUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ReportService reportService;
 
     /**
@@ -95,13 +95,21 @@ public class QueryController {
     }
 
     /**
+     * AI 서버에 요청해서 보고서 저장 및 JSON 반환
+     */
+    private Map<String, Object> fetchAndSaveReportFromAi(Map<String, Object> payload, String companyName) throws IOException {
+        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
+        String savedUrl = reportService.saveReportFromJsonString(response.getBody());
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        return objectMapper.readValue(response.getBody(), Map.class);
+    }
+
+    /**
      * 2. 재무제표 직접 입력 처리
      * 실제 AI 서버에 POST 요청을 보냄
      */
     @PostMapping("/financial")
     public ResponseEntity<?> forwardFinancialData(@RequestBody Map<String, Object> payload) {
-        // 예시: { "company_name": ..., "financial_data": {...}, "report_type": ..., "additional_context": ... }
-        // 선택적 필드: financial_data.corp_name, additional_context
         if (!payload.containsKey("financial_data")) {
             throw new FinancialDataParseException("financial_data가 누락되었거나 형식이 올바르지 않습니다.");
         }
@@ -112,19 +120,23 @@ public class QueryController {
         }
 
         try {
-            Optional<ReportEntity> optional = reportService.findReportByCorpName(companyName); // 보고서가 이미 존재하는지 확인
-            String safeCorpName = reportService.sanitizeDirectoryName(companyName); // 디렉토리 이름 안전하게 변환
+            Optional<ReportEntity> optional = reportService.findReportByCorpName(companyName);
+            String safeCorpName = reportService.sanitizeDirectoryName(companyName);
 
-            if (optional.isPresent()) { // 이미 보고서가 존재하면 파일에서 읽어오기
-                Map<String, Object> reportJson = reportService.readReportFromFile(safeCorpName);
-                return ResponseEntity.ok(reportJson);
+            if (optional.isPresent()) {
+                try {
+                    Map<String, Object> reportJson = reportService.readReportFromFile(safeCorpName);
+                    return ResponseEntity.ok(reportJson);
+                } catch (java.io.FileNotFoundException fileNotFound) {
+                    log.warn("DB에는 있지만 JSON 파일이 없어 AI 서버에 재요청: {}", companyName);
+                    Map<String, Object> reportJson = fetchAndSaveReportFromAi(payload, companyName);
+                    return ResponseEntity.ok(reportJson);
+                }
             }
 
-            // 없으면 AI 서버 호출 후 저장
-            ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
-            String savedUrl = reportService.saveReportFromJsonString(response.getBody());
-
-            return ResponseEntity.ok(Map.of("report_url", savedUrl));
+            // DB에도 없으면 AI 서버 호출 후 저장
+            Map<String, Object> reportJson = fetchAndSaveReportFromAi(payload, companyName);
+            return ResponseEntity.ok(reportJson);
 
         } catch (IOException e) {
             log.error("파일 처리 중 오류", e);

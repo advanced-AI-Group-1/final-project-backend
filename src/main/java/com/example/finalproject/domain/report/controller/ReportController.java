@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -90,20 +91,31 @@ public class ReportController {
     }
 
     //2. 기업명 기반 JSON 보고서 반환 (ApiResponse 없이 JSON 그대로 반환)
-    @GetMapping("/download-json/{corpName}")
+    @GetMapping(value = "/download-json/{corpName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
     public ResponseEntity<Map<String, Object>> serveJsonReport(@PathVariable String corpName) {
+        log.info("JSON 보고서 요청: 기업명 = {}", corpName);
+        
         Optional<ReportEntity> optionalReport = reportRepository.findByCorpName(corpName);
         if (optionalReport.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            log.warn("보고서를 찾을 수 없음: {}", corpName);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("error", "보고서를 찾을 수 없습니다."));
         }
 
         try {
             String safeCorpName = sanitizeDirectoryName(corpName);
             Map<String, Object> reportJson = readReportFromFile(safeCorpName); // 로컬 서버에 저장된 JSON 파일 읽기
-            return ResponseEntity.ok(reportJson);
+            log.info("JSON 보고서 반환 성공: {}", corpName);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(reportJson);
         } catch (IOException e) {
-            log.error("보고서 파일 읽기 실패", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            log.error("보고서 파일 읽기 실패: {}", corpName, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("error", "보고서 파일을 읽을 수 없습니다."));
         }
     }
 
