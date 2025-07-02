@@ -1,5 +1,6 @@
 package com.example.finalproject.config;
 
+import com.example.finalproject.config.jwt.JwtAuthenticationFilter;
 import com.example.finalproject.config.jwt.JwtConfig;
 import com.example.finalproject.config.jwt.JwtProvider;
 import com.example.finalproject.domain.user.handler.OAuth2SuccessHandler;
@@ -14,11 +15,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import jakarta.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -31,10 +34,18 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    @PostConstruct
+    public void setSecurityContextHolderStrategy() {
+        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
+    }
+
     private final OAuth2UserServiceImpl oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final JwtConfig jwtConfig;
     private final JwtProvider jwtProvider;
+
+    // JwtAuthenticationFilter는 @Bean으로 등록하지 않고 직접 생성하여 사용
+    // (순환 참조 문제 방지를 위해)
 
     private static final String[] PERMIT_ALL_PATTERNS = {
             "/",
@@ -48,7 +59,7 @@ public class SecurityConfig {
             "/error",
             "/favicon.ico"
     };
-    
+
 
 
     private boolean isApiRequest(HttpServletRequest request) {
@@ -67,6 +78,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
@@ -91,8 +103,9 @@ public class SecurityConfig {
                 logout.invalidateHttpSession(true);
                 logout.deleteCookies("JSESSIONID");
             })
-            .addFilterBefore(jwtConfig.jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
-            
+            // JWT 인증 필터 추가
+            .addFilterBefore(new JwtAuthenticationFilter(this.jwtProvider), UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
@@ -103,7 +116,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

@@ -13,20 +13,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * JWT(JSON Web Token) 생성 및 검증을 담당하는 클래스입니다.
  * 사용자 식별 정보와 만료 시간이 포함된 JWT 토큰을 생성합니다.
- * 
+ *
  * <p>주요 기능:
  * <ul>
  *   <li>HS512 서명 알고리즘을 사용한 안전한 JWT 토큰 생성</li>
  *   <li>애플리케이션 시작 시 안전한 비밀 키 자동 생성</li>
  *   <li>기본적으로 1일 후 만료되는 토큰 발급</li>
  * </ul>
- * 
+ *
  * <p>참고: 비밀 키는 jjwt 라이브러리의 Keys 유틸리티 클래스를 사용하여
  * 안전하게 자동 생성됩니다.
  */
@@ -35,9 +36,21 @@ import java.util.stream.Collectors;
 public class JwtProvider {
 
     // ✅ 안전한 키를 공식 API로 자동 생성
-    private static final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS512);
-
+    private static final SecretKey SECRET_KEY;
     private static final long EXPIRATION = 1000 * 60 * 60 * 24; // 1일
+
+    static {
+        try {
+            // 안전한 512비트 키 생성
+            SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+            log.info("JWT 시크릿 키 자동 생성 완료. Base64 인코딩된 키: {}",
+                    java.util.Base64.getEncoder().encodeToString(SECRET_KEY.getEncoded()));
+        } catch (Exception e) {
+            log.error("JWT 시크릿 키 생성 실패", e);
+            throw new IllegalStateException("JWT 시크릿 키를 생성할 수 없습니다.", e);
+        }
+    }
+
 
     public String generateToken(String userId) {
         return Jwts.builder()
@@ -55,21 +68,30 @@ public class JwtProvider {
      */
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
+            log.info("토큰 검증 시도: {}", token);
+            Claims claims = Jwts.parserBuilder()
                 .setSigningKey(SECRET_KEY)
                 .build()
-                .parseClaimsJws(token);
+                .parseClaimsJws(token)
+                .getBody();
+
+            log.info("토큰 검증 성공 - 사용자: {}, 만료일시: {}",
+                claims.getSubject(), claims.getExpiration());
             return true;
-        } catch (SignatureException e) {
-            log.error("Invalid JWT signature: {}", e.getMessage());
-        } catch (MalformedJwtException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
+
         } catch (ExpiredJwtException e) {
-            log.error("JWT token is expired: {}", e.getMessage());
+            log.error("만료된 JWT 토큰: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            log.error("JWT token is unsupported: {}", e.getMessage());
+            log.error("지원되지 않는 JWT 토큰: {}", e.getMessage());
+        } catch (MalformedJwtException e) {
+            log.error("잘못된 JWT 서명: {}", e.getMessage());
+        } catch (SignatureException e) {
+            log.error("JWT 서명 검증 실패: {}", e.getMessage());
+            log.error("예상 서명 키: {}", java.util.Base64.getEncoder().encodeToString(SECRET_KEY.getEncoded()));
         } catch (IllegalArgumentException e) {
-            log.error("JWT claims string is empty: {}", e.getMessage());
+            log.error("JWT 토큰이 비어있습니다: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("JWT 토큰 검증 중 오류 발생: {}", e.getMessage(), e);
         }
         return false;
     }
@@ -90,11 +112,11 @@ public class JwtProvider {
         // 여기서는 단순히 사용자 ID만 추출하지만,
         // 필요에 따라 추가 클레임을 추출하여 권한 정보를 설정할 수 있습니다.
         String userId = claims.getSubject();
-        
+
         // UserDetails 객체 생성 (여기서는 간단히 User 객체를 사용)
         // 실제로는 사용자 서비스를 통해 DB에서 사용자 정보를 조회하는 것이 좋습니다.
         UserDetails principal = new User(userId, "", new ArrayList<>());
-        
+
         // UsernamePasswordAuthenticationToken을 생성하여 반환
         return new UsernamePasswordAuthenticationToken(principal, "", principal.getAuthorities());
     }

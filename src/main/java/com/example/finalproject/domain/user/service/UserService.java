@@ -75,14 +75,21 @@ public class UserService {
         log.info("로그인 시도 - 사용자 ID: {}", userId);
         Optional<UserEntity> user = userRepository.findByUserId(userId);
         
-        if (user.isPresent()) {
-            boolean passwordMatches = passwordEncoder.matches(password, user.get().getPassword());
-            log.info("비밀번호 일치 여부: {}", passwordMatches ? "일치" : "불일치");
-        } else {
+        if (user.isEmpty()) {
             log.warn("사용자를 찾을 수 없음 - ID: {}", userId);
+            throw new RuntimeException("아이디 또는 비밀번호를 확인해주세요.");
         }
         
-        if (user.isPresent() && passwordEncoder.matches(password, user.get().getPassword())) {
+        // 탈퇴한 회원인지 확인
+        if (user.get().isWithdraw()) {
+            log.warn("탈퇴한 회원 로그인 시도 - ID: {}", userId);
+            throw new RuntimeException("탈퇴한 회원입니다.");
+        }
+        
+        boolean passwordMatches = passwordEncoder.matches(password, user.get().getPassword());
+        log.info("비밀번호 일치 여부: {}", passwordMatches ? "일치" : "불일치");
+        
+        if (passwordMatches) {
             String token = jwtProvider.generateToken(userId);
             log.info("로그인 성공 - 토큰 생성됨");
             return token;

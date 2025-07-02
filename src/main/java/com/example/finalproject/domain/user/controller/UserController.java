@@ -24,8 +24,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
+import com.example.finalproject.config.jwt.JwtProvider;
 import java.util.Optional;
+
 
 /**
  * 사용자 관련 API 요청을 처리하는 REST 컨트롤러입니다.
@@ -63,6 +66,10 @@ import java.util.Optional;
  * }
  * → ApiResponse<String>
  * </pre>
+ *
+ * @author
+ * @version 1.0
+ * @since 2025-06-24
  */
 
 @RestController
@@ -70,6 +77,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
+
+    private final JwtProvider jwtProvider;
 
     private final UserService userService;
 
@@ -84,6 +93,14 @@ public class UserController {
         }
     }
 
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        log.info("✅ /test 엔드포인트에 도달함");
+        return ResponseEntity.ok("hello");
+    }
+
+
+    // 로그인
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequest) {
         log.info("로그인 요청 수신 - 사용자 ID: {}", loginRequest.getUserId());
@@ -157,19 +174,49 @@ public class UserController {
      */
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<String>> withdrawUser(
-            @AuthenticationPrincipal CustomOAuth2User principal,
+//            @AuthenticationPrincipal CustomOAuth2User principal,
+            @RequestHeader(value = "Authorization") String authHeader,
             @RequestParam(required = false) String password) {
-
-        // 인증 정보가 없는 경우
-        if (principal == null) {
-            log.warn("사용자 탈퇴 실패 - 인증 정보 없음");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("인증 정보가 없습니다. 로그인이 필요합니다."));
-        }
+//
+//        // 인증 정보가 없는 경우
+//        if (principal == null) {
+//            log.warn("사용자 탈퇴 실패 - 인증 정보 없음");
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+//                    .body(ApiResponse.error("인증 정보가 없습니다. 로그인이 필요합니다."));
+//        }
 
         try {
-            String userId = principal.getUserId(); // 시큐리티 세션에서 userId 추출
+            // 1. Authorization 헤더 검증
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                log.warn("사용자 탈퇴 실패 - 유효하지 않은 인증 헤더");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("인증 헤더가 유효하지 않습니다."));
+            }
+
+            // 2. 토큰 추출 및 검증
+            String token = authHeader.substring(7);
+            if (!jwtProvider.validateToken(token)) {
+                log.warn("사용자 탈퇴 실패 - 유효하지 않은 토큰");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("유효하지 않은 토큰입니다. 다시 로그인해 주세요."));
+            }
+
+            // 3. 토큰에서 사용자 ID 추출
+            Authentication authentication = jwtProvider.getAuthentication(token);
+            String userId = authentication.getName();
+//            String userId = principal.getUserId(); // 시큐리티 세션에서 userId 추출
+            log.info("사용자 아이디: {}", userId);
+
+
+            if (userId == null || userId.isEmpty()) {
+                log.warn("사용자 탈퇴 실패 - 토큰에서 사용자 ID를 추출할 수 없음");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("인증 정보를 확인할 수 없습니다."));
+            }
+
+            // 4. 회원 탈퇴 처리
             userService.withdrawUser(userId, password);
+            log.info("사용자 탈퇴 성공 - 사용자 ID: {}", userId);
             return ResponseEntity.ok(ApiResponse.success("회원 탈퇴가 완료되었습니다."));
         } catch (UserNotFoundException e) {
             log.warn("사용자 탈퇴 실패 - 사용자 찾을 수 없음: {}", e.getMessage());
