@@ -57,7 +57,12 @@ public class SecurityConfig {
             "/login/oauth2/code/**",
             "/oauth2/authorization/**",
             "/error",
-            "/favicon.ico"
+            "/favicon.ico",
+        "/api/user/reset-password",
+        "/api/user/send-verification-email",
+        "/api/user/verify-email-code",
+        "/api/user/request-reset-password",
+        "/auth/verify"
     };
 
 
@@ -72,13 +77,15 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(
+                session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PERMIT_ALL_PATTERNS).permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
+                UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
@@ -104,11 +111,11 @@ public class SecurityConfig {
                 logout.deleteCookies("JSESSIONID");
             })
             // JWT 인증 필터 추가
-            .addFilterBefore(new JwtAuthenticationFilter(this.jwtProvider), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new JwtAuthenticationFilter(this.jwtProvider),
+                UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
