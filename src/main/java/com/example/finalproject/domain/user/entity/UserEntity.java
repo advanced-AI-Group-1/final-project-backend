@@ -1,13 +1,23 @@
 package com.example.finalproject.domain.user.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "USERS")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor
@@ -38,7 +48,8 @@ public class UserEntity {
     @Column(nullable = false)
     private boolean isDirectSignup;
 
-    public UserEntity(String userId, String password, boolean enabled, LocalDateTime dateCreated, LocalDateTime dateWithdraw, boolean withdraw, boolean isDirectSignup) {
+    public UserEntity(String userId, String password, boolean enabled, LocalDateTime dateCreated,
+        LocalDateTime dateWithdraw, boolean withdraw, boolean isDirectSignup) {
         this.userId = userId;
         this.password = password;
         this.enabled = enabled;
@@ -47,12 +58,9 @@ public class UserEntity {
         this.withdraw = withdraw;
         this.isDirectSignup = isDirectSignup;
     }
-    
+
     /**
-     * 사용자 탈퇴 처리 메서드
-     * - 계정 비활성화
-     * - 탈퇴 여부 표시
-     * - 탈퇴 일시 기록
+     * 사용자 탈퇴 처리 메서드 - 계정 비활성화 - 탈퇴 여부 표시 - 탈퇴 일시 기록
      */
     public void withdraw() {
         this.enabled = false;
