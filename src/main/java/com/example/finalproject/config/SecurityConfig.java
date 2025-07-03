@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import jakarta.annotation.PostConstruct;
+
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -34,98 +35,90 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    @PostConstruct
-    public void setSecurityContextHolderStrategy() {
-        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
-    }
+	@PostConstruct
+	public void setSecurityContextHolderStrategy() {
+		SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
+	}
 
-    private final OAuth2UserServiceImpl oAuth2UserService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler;
-    private final JwtConfig jwtConfig;
-    private final JwtProvider jwtProvider;
+	private final OAuth2UserServiceImpl oAuth2UserService;
+	private final OAuth2SuccessHandler oAuth2SuccessHandler;
+	private final JwtConfig jwtConfig;
+	private final JwtProvider jwtProvider;
 
-    // JwtAuthenticationFilter는 @Bean으로 등록하지 않고 직접 생성하여 사용
-    // (순환 참조 문제 방지를 위해)
+	// JwtAuthenticationFilter는 @Bean으로 등록하지 않고 직접 생성하여 사용
+	// (순환 참조 문제 방지를 위해)
 
-    private static final String[] PERMIT_ALL_PATTERNS = {
-            "/",
-            "/api/user/signup",
-            "/api/user/login",
-            "/api/user/login/**",
-            "/api/user/reset-password",
-            "/api/user/me",  // 임시로 인증 해제
-            "/login/oauth2/code/**",
-            "/oauth2/authorization/**",
-            "/error",
-            "/favicon.ico",
-        "/api/user/reset-password",
-        "/api/user/send-verification-email",
-        "/api/user/verify-email-code",
-        "/api/user/request-reset-password",
-        "/auth/verify"
-    };
+	private static final String[] PERMIT_ALL_PATTERNS = {
+		"/",
+		"/api/user/signup",
+		"/api/user/login",
+		"/api/user/login/**",
+		"/api/user/reset-password",
+		"/api/user/me",  // 임시로 인증 해제
+		"/login/oauth2/code/**",
+		"/oauth2/authorization/**",
+		"/error",
+		"/favicon.ico",
+		"/api/user/reset-password",
+		"/api/user/send-verification-email",
+		"/api/user/verify-email-code",
+		"/api/user/request-reset-password",
+		"/auth/verify"
+	};
 
 
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		http
+			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+			.csrf(csrf -> csrf.disable())
+			.sessionManagement(
+				session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.authorizeHttpRequests(auth -> auth
+				.requestMatchers(PERMIT_ALL_PATTERNS).permitAll()
+				.requestMatchers("/api/admin/**").hasRole("ADMIN")
+				.anyRequest().authenticated()
+			)
+			.addFilterBefore(new JwtAuthenticationFilter(this.jwtProvider),
+				UsernamePasswordAuthenticationFilter.class)
+			.exceptionHandling(exception -> exception
+				.authenticationEntryPoint((request, response, authException) -> {
+					response.setStatus(HttpStatus.UNAUTHORIZED.value());
+					response.setContentType("application/json");
+					response.setCharacterEncoding("UTF-8");
+					response.getWriter().write("{\"success\":false,\"message\":\"인증이 필요합니다.\"}");
+				})
+			)
+			.oauth2Login(oauth2 -> oauth2
+				.userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
+				.successHandler(oAuth2SuccessHandler)
+			)
+			.logout(logout -> {
+				logout.logoutSuccessHandler((request, response, authentication) -> {
+					String path = request.getRequestURI();
+					if (path.startsWith("/api/")) {
+						response.setStatus(HttpServletResponse.SC_OK);
+					} else {
+						response.sendRedirect("/");
+					}
+				});
+				logout.invalidateHttpSession(true);
+				logout.deleteCookies("JSESSIONID");
+			});
 
-    private boolean isApiRequest(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.startsWith("/api/");
-    }
+		return http.build();
+	}
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(
-                session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(PERMIT_ALL_PATTERNS).permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
-                UsernamePasswordAuthenticationFilter.class)
-            .exceptionHandling(exception -> exception
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                    response.setContentType("application/json");
-                    response.setCharacterEncoding("UTF-8");
-                    response.getWriter().write("{\"success\":false,\"message\":\"인증이 필요합니다.\"}");
-                })
-            )
-            .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
-                .successHandler(oAuth2SuccessHandler)
-            )
-            .logout(logout -> {
-                logout.logoutSuccessHandler((request, response, authentication) -> {
-                    String path = request.getRequestURI();
-                    if (path.startsWith("/api/")) {
-                        response.setStatus(HttpServletResponse.SC_OK);
-                    } else {
-                        response.sendRedirect("/");
-                    }
-                });
-                logout.invalidateHttpSession(true);
-                logout.deleteCookies("JSESSIONID");
-            })
-            // JWT 인증 필터 추가
-            .addFilterBefore(new JwtAuthenticationFilter(this.jwtProvider),
-                UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
+		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(Collections.singletonList("*"));
+		configuration.setAllowCredentials(true);
 
-        return http.build();
-    }
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Collections.singletonList("*"));
-        configuration.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
 }
