@@ -63,7 +63,9 @@ public class SecurityConfig {
 		"/api/user/send-verification-email",
 		"/api/user/verify-email-code",
 		"/api/user/request-reset-password",
-		"/auth/verify"
+		"/auth/verify",
+		"/api/query/report/**",  // 보고서 조회 엔드포인트 허용
+		"/api/query/save-report"  // 보고서 저장 엔드포인트 허용
 	};
 
 

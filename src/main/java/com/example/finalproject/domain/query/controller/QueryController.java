@@ -8,10 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -27,6 +24,8 @@ import java.util.Optional;
  * 주요 기능:
  * - POST /api/query/ask: 사용자의 자연어 질의를 AI 서버로 전달하고, 응답을 반환
  * - POST /api/query/financial: 사용자가 직접 입력한 재무제표 데이터를 AI 서버로 전달하고, 분석 결과를 반환
+ * - GET /api/query/report/{companyName}: 특정 기업의 보고서 조회
+ * - POST /api/query/save-report: AI 서버에서 생성된 보고서를 저장
  * <p>
  * 내부 구현:
  * - 두 API 모두 JSON 형식의 데이터를 받으며, 각각 "query" 또는 "financialData" 필드를 사용
@@ -95,16 +94,6 @@ public class QueryController {
     }
 
     /**
-     * AI 서버에 요청해서 보고서 저장 및 JSON 반환
-     */
-    private Map<String, Object> fetchAndSaveReportFromAi(Map<String, Object> payload, String companyName) throws IOException {
-        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
-        String savedUrl = reportService.saveReportFromJsonString(response.getBody());
-        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        return objectMapper.readValue(response.getBody(), Map.class);
-    }
-
-    /**
      * 2. 재무제표 직접 입력 처리
      * 실제 AI 서버에 POST 요청을 보냄
      */
@@ -147,6 +136,109 @@ public class QueryController {
         }
     }
 
+    /**
+     * AI 서버에 요청해서 보고서 저장 및 JSON 반환
+     */
+    private Map<String, Object> fetchAndSaveReportFromAi(Map<String, Object> payload, String companyName) throws IOException {
+        ResponseEntity<String> response = sendToAiServer(payload, "/api/ai/v1/report/generate-from-financial-data");
+        String savedUrl = reportService.saveReportFromJsonString(response.getBody());
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        return objectMapper.readValue(response.getBody(), Map.class);
+    }
+
+    /**
+     * 3. 특정 기업의 보고서 조회
+     * DB에서 보고서 존재 여부를 확인하고, 있으면 반환
+     */
+    @GetMapping("/report/{companyName}")
+    public ResponseEntity<?> getReport(@PathVariable String companyName) {
+        log.info("보고서 조회 요청: {}", companyName);
+        
+        try {
+            Optional<ReportEntity> optional = reportService.findReportByCorpName(companyName);
+            
+            if (optional.isPresent()) {
+                String safeCorpName = reportService.sanitizeDirectoryName(companyName);
+                try {
+                    Map<String, Object> reportJson = reportService.readReportFromFile(safeCorpName);
+                    return ResponseEntity.ok(Map.of(
+                        "exists", true,
+                        "company_name", companyName,
+                        "report", reportJson
+                    ));
+                } catch (java.io.FileNotFoundException fileNotFound) {
+                    log.warn("DB에는 있지만 JSON 파일이 없음: {}", companyName);
+                    return ResponseEntity.ok(Map.of(
+                        "exists", false,
+                        "company_name", companyName,
+                        "message", "보고서 파일이 존재하지 않습니다."
+                    ));
+                }
+            } else {
+                return ResponseEntity.ok(Map.of(
+                    "exists", false,
+                    "company_name", companyName,
+                    "message", "해당 기업의 보고서가 존재하지 않습니다."
+                ));
+            }
+        } catch (Exception e) {
+            log.error("보고서 조회 중 오류: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "보고서 조회 중 오류가 발생했습니다.",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 4. AI 서버에서 생성된 보고서를 저장
+     * 프론트엔드에서 AI 서버로부터 받은 보고서 데이터를 저장
+     */
+    @PostMapping("/save-report")
+    public ResponseEntity<?> saveReport(@RequestBody Map<String, Object> payload) {
+        log.info("보고서 저장 요청: {}", payload.get("company_name"));
+        
+        try {
+            String companyName = (String) payload.get("company_name");
+            if (companyName == null || companyName.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "company_name이 필요합니다."
+                ));
+            }
+
+            // 보고서 데이터 추출
+            Object reportData = payload.get("report");
+            if (reportData == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "report 데이터가 필요합니다."
+                ));
+            }
+
+            // JSON 문자열로 변환
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            String reportJson = objectMapper.writeValueAsString(reportData);
+            
+            // 보고서 저장
+            String savedUrl = reportService.saveReportFromJsonString(reportJson);
+            
+            log.info("보고서 저장 완료: {} -> {}", companyName, savedUrl);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "company_name", companyName,
+                "saved_url", savedUrl,
+                "message", "보고서가 성공적으로 저장되었습니다."
+            ));
+            
+        } catch (Exception e) {
+            log.error("보고서 저장 중 오류: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "보고서 저장 중 오류가 발생했습니다.",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
     private String extractCompanyName(Map<String, Object> payload) {
         String name = (String) payload.getOrDefault("company_name", null);
         if (name != null && !name.isBlank()) return name;
@@ -154,8 +246,6 @@ public class QueryController {
         Map<String, Object> financialData = (Map<String, Object>) payload.get("financial_data");
         return (String) financialData.getOrDefault("corp_name", null);
     }
-
-
 }
 
 
